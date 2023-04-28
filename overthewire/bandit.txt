@@ -314,4 +314,107 @@ bandit17@bandit:~$ diff passwords.old passwords.new
 Level 18 -> Level 19
 
 "The password for the next level is stored in a file readme in the homedirectory. Unfortunately, someone has modified .bashrc to log you out when you log in with SSH."
-sshpass -p hga5tuuCLF6fFzUpnagiMN8ssu9LFrdg ssh bandit18@bandit.labs.overthewire.org -p 2220
+
+sshpass -p hga5tuuCLF6fFzUpnagiMN8ssu9LFrdg ssh bandit18@bandit.labs.overthewire.org -p 2220 'cat readme'
+
+awhqfNnAbc1naukrpqDYcF95h7HoMTrC
+
+----------------------------------------------------------------------
+Level 19 -> Level 20
+
+"To gain access to the next level, you should use the setuid binary in the homedirectory. Execute it without arguments to find out how to use it. The password for this level can be found in the usual place (/etc/bandit_pass), after you have used the setuid binary."
+
+sshpass -p awhqfNnAbc1naukrpqDYcF95h7HoMTrC ssh bandit19@bandit.labs.overthewire.org -p 2220
+
+bandit19@bandit:~$ ./bandit20-do cat /etc/bandit_pass/bandit20
+VxCazJaVykI6W36BkBU0mJTCM8rR95XT
+
+----------------------------------------------------------------------
+Level 20 -> Level 21
+
+"There is a setuid binary in the homedirectory that does the following: it makes a connection to localhost on the port you specify as a commandline argument. It then reads a line of text from the connection and compares it to the password in the previous level (bandit20). If the password is correct, it will transmit the password for the next level (bandit21)."
+
+sshpass -p VxCazJaVykI6W36BkBU0mJTCM8rR95XT ssh bandit20@bandit.labs.overthewire.org -p 2220
+
+tmux
+C-b <double-quote> -- splits window into two panes
+
+T1:
+bandit20@bandit:~$ cat /etc/bandit_pass/bandit20 | nc -l localhost 2222
+(waiting)
+
+T2:
+bandit20@bandit:~$ ./suconnect 2222
+Read: VxCazJaVykI6W36BkBU0mJTCM8rR95XT
+Password matches, sending next password
+
+T1:(continues)
+bandit20@bandit:~$ cat /etc/bandit_pass/bandit20 | nc -l localhost 2222
+NvEJF7oVjkddltPSrdKEFOllh9V1IBcq
+
+----------------------------------------------------------------------
+Level 21 -> Level 22
+
+"A program is running automatically at regular intervals from cron, the time-based job scheduler. Look in /etc/cron.d/ for the configuration and see what command is being executed."
+
+sshpass -p NvEJF7oVjkddltPSrdKEFOllh9V1IBcq ssh bandit21@bandit.labs.overthewire.org -p 2220
+
+bandit21@bandit:~$ ls -al /etc/cron.d
+total 56
+drwxr-xr-x   2 root root  4096 Apr 23 18:05 .
+drwxr-xr-x 108 root root 12288 Apr 23 18:05 ..
+-rw-r--r--   1 root root    62 Apr 23 18:04 cronjob_bandit15_root
+-rw-r--r--   1 root root    62 Apr 23 18:04 cronjob_bandit17_root
+-rw-r--r--   1 root root   120 Apr 23 18:04 cronjob_bandit22
+-rw-r--r--   1 root root   122 Apr 23 18:04 cronjob_bandit23
+-rw-r--r--   1 root root   120 Apr 23 18:04 cronjob_bandit24
+-rw-r--r--   1 root root    62 Apr 23 18:04 cronjob_bandit25_root
+-rw-r--r--   1 root root   201 Jan  8  2022 e2scrub_all
+-rwx------   1 root root    52 Apr 23 18:05 otw-tmp-dir
+-rw-r--r--   1 root root   102 Mar 23  2022 .placeholder
+-rw-r--r--   1 root root   396 Feb  2  2021 sysstat
+
+bandit21@bandit:~$ cat /etc/cron.d/cronjob_bandit22
+@reboot bandit22 /usr/bin/cronjob_bandit22.sh &> /dev/null
+* * * * * bandit22 /usr/bin/cronjob_bandit22.sh &> /dev/null
+
+bandit21@bandit:~$ cat /usr/bin/cronjob_bandit22.sh
+#!/bin/bash
+chmod 644 /tmp/t7O6lds9S0RqQh9aMcz6ShpAoZKF7fgv
+cat /etc/bandit_pass/bandit22 > /tmp/t7O6lds9S0RqQh9aMcz6ShpAoZKF7fgv
+
+bandit21@bandit:~$ cat /tmp/t7O6lds9S0RqQh9aMcz6ShpAoZKF7fgv
+WdDozAdTM2z9DiFEQ2mGlwngMfj4EZff
+
+----------------------------------------------------------------------
+Level 22 -> Level 23
+
+"A program is running automatically at regular intervals from cron, the time-based job scheduler. Look in /etc/cron.d/ for the configuration and see what command is being executed."
+
+sshpass -p WdDozAdTM2z9DiFEQ2mGlwngMfj4EZff ssh bandit22@bandit.labs.overthewire.org -p 2220
+
+bandit22@bandit:~$ cat /usr/bin/cronjob_bandit23.sh
+#!/bin/bash
+
+myname=$(whoami)
+mytarget=$(echo I am user $myname | md5sum | cut -d ' ' -f 1)
+
+echo "Copying passwordfile /etc/bandit_pass/$myname to /tmp/$mytarget"
+
+cat /etc/bandit_pass/$myname > /tmp/$mytarget
+
+bandit22@bandit:~$ cat /tmp/$(echo I am user bandit23 | md5sum | cut -d ' ' -f 1)
+QYw0Y2aiA672PsMmh9puTQuhoz8SyR2G
+
+----------------------------------------------------------------------
+Level 23 -> Level 24
+
+"A program is running automatically at regular intervals from cron, the time-based job scheduler. Look in /etc/cron.d/ for the configuration and see what command is being executed.
+
+NOTE: This level requires you to create your own first shell-script. This is a very big step and you should be proud of yourself when you beat this level!
+
+NOTE 2: Keep in mind that your shell script is removed once executed, so you may want to keep a copy around"
+
+sshpass -p QYw0Y2aiA672PsMmh9puTQuhoz8SyR2G ssh bandit23@bandit.labs.overthewire.org -p 2220
+
+TODO
