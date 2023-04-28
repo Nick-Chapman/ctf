@@ -85,9 +85,25 @@ solve(H): 414141414141414141414141414141414c4541417f
 
 ----------------------------------------------------------------------
 Johannesburg
-TODO: explain
-17x "x", be, 9445, "xx" 7f
-solve: 7878787878787878787878787878787878be944578787f
+
+Password stated to be up to 16 chars, but <gensn> allows upto 63 chars.
+This is copied by <strcpy> from the heap (2400) to the stack,
+allowing us to overwrite the return address for <login>.
+
+<login> reserves just 18 bytes on the stack: 16 bytes for the password,
+1 more (for an additional null perhaps) and 1 more for a canary.
+The canary is filled with a fixed value (0xBE).
+And then checked after the <strcpy>.
+All we need to do is ensure that we preserve this canary with out exploit.
+So we construct a password: 17x anything, 0xBE, [jump address] [args].
+
+Where do we want to jump?
+There is no convenient <unlock> function.
+So instead we jump to <INT> (4594), supplying the 7f code,
+the code following a dummy word, which would be the return address for <INT>.
+
+solve:
+4141414141414141414141414141414141 BE 9445 4242 7F
 
 
 ----------------------------------------------------------------------
