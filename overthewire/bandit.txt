@@ -511,6 +511,57 @@ Clone the repository and find the password for the next level."
 rm -rf repo/
 sshpass -p tQKvmcwNYcFS6vmPHIUSI3ShmsrQZK8S git clone ssh://bandit29-git@bandit.labs.overthewire.org:2220/home/bandit29-git/repo
 cd repo/
-cat README.md
 
-TODO: dig into .git ???
+$ git log --oneline --all | cut -d' ' -f1 | while read r; do git checkout -q $r; find * -type f | xargs cat ; done | grep password | grep -v no
+- password: xbhV3HpNGlTIdnjUrdAlPzc2L6y9EOnS
+
+----------------------------------------------------------------------
+Level 30 -> Level 31
+
+"There is a git repository at ssh://bandit30-git@localhost/home/bandit30-git/repo. The password for the user bandit30-git is the same as for the user bandit30.
+
+Clone the repository and find the password for the next level."
+
+nic@luna:/tmp$ sshpass -p xbhV3HpNGlTIdnjUrdAlPzc2L6y9EOnS git clone ssh://bandit30-git@bandit.labs.overthewire.org:2220/home/bandit30-git/repo
+cd repo/
+
+nic@luna:/tmp/repo$ git tag
+secret
+
+nic@luna:/tmp/repo$ git show secret
+OoffzGDlzhAlerFJ2cAiz1D41JW1Mhmt
+
+----------------------------------------------------------------------
+Level 31 -> Level 32
+
+"There is a git repository at ssh://bandit31-git@localhost/home/bandit31-git/repo. The password for the user bandit31-git is the same as for the user bandit31.
+
+Clone the repository and find the password for the next level."
+
+sshpass -p OoffzGDlzhAlerFJ2cAiz1D41JW1Mhmt ssh bandit31@bandit.labs.overthewire.org -p 2220
+
+nic@luna:/tmp$ sshpass -p OoffzGDlzhAlerFJ2cAiz1D41JW1Mhmt git clone ssh://bandit31-git@bandit.labs.overthewire.org:2220/home/bandit31-git/repo
+
+nic@luna:/tmp$ cd repo/
+nic@luna:/tmp/repo$ cat README.md
+This time your task is to push a file to the remote repository.
+
+Details:
+    File name: key.txt
+    Content: 'May I come in?'
+    Branch: master
+
+  echo 'May I come in?' > key.txt
+  rm .gitignore
+  git add .
+  git commit -m 'add file'
+
+remote: Well done! Here is the password for the next level:
+remote: rmCBvG56y58BXzv98yZGdO7ATVL5dW8y
+
+----------------------------------------------------------------------
+Level 32 -> Level 33
+
+"After all this git stuff its time for another escape. Good luck!"
+
+sshpass -p rmCBvG56y58BXzv98yZGdO7ATVL5dW8y ssh bandit32@bandit.labs.overthewire.org -p 2220
